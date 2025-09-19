@@ -61,7 +61,7 @@ jobs:
 
     - name: Run schemathesis e2e tests
       run: |
-        schemathesis run --max-examples 50 --validate-schema http://127.0.0.1:8000/openapi.json
+        schemathesis run --max-examples 50 --wait-for-schema http://127.0.0.1:8000/openapi.json
 
     - name: Cleanup on failure
       if: failure()
