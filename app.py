@@ -1,5 +1,6 @@
 import gradio as gr
 import time
+from time import monotonic
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response, PlainTextResponse
 from fastapi.exceptions import HTTPException
@@ -24,6 +25,19 @@ ui = gr.ChatInterface(fn=respond, title="LangGraph + OpenRouter", fill_height=Tr
 
 # 1) 默认响应统一为 JSON（让 OpenAPI 对未显式声明的路由有明确 content-type）
 app = FastAPI(default_response_class=JSONResponse)
+
+# --- begin: metrics rate limit ---
+_LAST_METRICS_TS = 0.0
+@app.middleware("http")
+async def _rate_limit_metrics(request: Request, call_next):
+    global _LAST_METRICS_TS
+    if request.url.path == "/metrics":
+        now = monotonic()
+        if now - _LAST_METRICS_TS < 1.0:  # 最多 1 QPS
+            return PlainTextResponse("rate limited", status_code=429)
+        _LAST_METRICS_TS = now
+    return await call_next(request)
+# --- end: metrics rate limit ---
 
 @app.middleware("http")
 async def _metrics_mw(request, call_next):

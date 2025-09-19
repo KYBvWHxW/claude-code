@@ -1,5 +1,7 @@
 # LangGraph Gradio Starter
 
+[![tests](https://github.com/KYBvWHxW/claude-code/actions/workflows/test.yml/badge.svg)](https://github.com/KYBvWHxW/claude-code/actions/workflows/test.yml)
+
 基于FastAPI + Gradio + LangGraph的聊天机器人应用，集成OpenRouter API，提供Web界面的智能对话服务。
 
 ## 特性
