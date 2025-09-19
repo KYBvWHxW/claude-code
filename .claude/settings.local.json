@@ -30,7 +30,9 @@
       "Bash(git branch:*)",
       "Bash(gh:*)",
       "Bash(git remote set-url:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(ssh:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
