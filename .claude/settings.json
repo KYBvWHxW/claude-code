@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 - <<'PY'\nimport json, os, sys, subprocess, shlex\ninp=json.load(sys.stdin)\nfp=inp.get('tool_input',{}).get('file_path','') or ''\nroot=os.getcwd()\n\n# 工具函数\ndef run(cmd):\n    print('Running:', ' '.join(map(shlex.quote, cmd)))\n    p=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)\n    return p.returncode, p.stdout, p.stderr\n\ndef fail(msg, out='', err=''):\n    sys.stderr.write(msg+'\\n')\n    if out: sys.stderr.write(out+'\\n')\n    if err: sys.stderr.write(err+'\\n')\n    sys.exit(2)\n\nran_any=False\n\n# Node 项目\nif os.path.exists(os.path.join(root,'package.json')) and any(fp.endswith(ext) for ext in ('.js','.jsx','.ts','.tsx','.mjs','.cjs')):\n    code,out,err=run([\"npm\",\"test\",\"--silent\"])\n    if code==0:\n        print(out); ran_any=True\n    else:\n        fail('npm tests failed', out, err)\n\n# Python 项目\nif any(fp.endswith(ext) for ext in ('.py','.pyx','.pyi')) or os.path.exists(os.path.join(root,'pyproject.toml')):\n    code,out,err=run([\"pytest\",\"-q\"])\n    if code==0:\n        print(out); ran_any=True\n    else:\n        fail('pytest failed', out, err)\n\n# API 层 Schemathesis\napi_touched = (\n    fp.endswith(('openapi.yaml','openapi.yml','schema.graphql')) or\n    fp.startswith(('openapi/','schemas/','api/','routes/'))\n)\nif api_touched:\n    schema_path = 'openapi.yaml' if os.path.exists('openapi.yaml') else None\n    if schema_path:\n        cmd=[\"schemathesis\",\"run\",\"--max-examples\",\"50\",\"--validate-schema\",\"--continue-on-failure\", schema_path]\n        code,out,err=run(cmd)\n        if code==0:\n            print(out)\n        else:\n            fail('Schemathesis failures', out, err)\n\nif not ran_any and not api_touched:\n    sys.exit(0)\n\nsys.exit(0)\nPY"
+          }
+        ]
+      }
+    ]
+  }
+}

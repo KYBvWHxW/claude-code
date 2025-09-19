@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(python:*)",
+      "Bash(source:*)",
+      "Bash(pip --version)",
+      "Bash(pip install:*)",
+      "Bash(lsof:*)",
+      "Bash(flyctl auth:*)",
+      "Bash(flyctl launch:*)",
+      "Bash(flyctl secrets set:*)",
+      "Bash(flyctl apps create:*)",
+      "Bash(flyctl deploy:*)",
+      "Bash(flyctl status:*)",
+      "Bash(flyctl open:*)",
+      "Bash(flyctl logs:*)",
+      "Bash(curl:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
