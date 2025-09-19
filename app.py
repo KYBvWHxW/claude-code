@@ -1,7 +1,7 @@
 import gradio as gr
 import time
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, PlainTextResponse
 from fastapi.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
@@ -22,7 +22,8 @@ def respond(user_input, history):
 
 ui = gr.ChatInterface(fn=respond, title="LangGraph + OpenRouter", fill_height=True)
 
-app = FastAPI()
+# 1) 默认响应统一为 JSON（让 OpenAPI 对未显式声明的路由有明确 content-type）
+app = FastAPI(default_response_class=JSONResponse)
 
 @app.middleware("http")
 async def _metrics_mw(request, call_next):
@@ -33,29 +34,49 @@ async def _metrics_mw(request, call_next):
         pass
     return resp
 
-@app.get("/health")
+# 4) 可选的 TRACE/非常规方法兜底（部分环境下 TRACE 会走到 404）
+@app.middleware("http")
+async def reject_unsupported_methods(request: Request, call_next):
+    if request.method not in ("GET", "OPTIONS"):
+        # 尽早返回 405，避免被其它中间件吞掉变成 404/200
+        return JSONResponse(
+            status_code=405,
+            content={"detail": f"Method {request.method} not allowed"},
+            headers={"Allow": "GET, OPTIONS"},
+        )
+    return await call_next(request)
+
+# === 健康/诊断端点：明确只有 GET，OpenAPI 会标注 application/json ===
+@app.get("/health", summary="Liveness probe", responses={200: {"content": {"application/json": {}}}})
 def health():
     return JSONResponse({"status": "ok"})
 
-@app.get("/ready")   # 依赖就绪（可扩展外部依赖检查）
+@app.get("/ready", summary="Readiness probe", responses={200: {"content": {"application/json": {}}}})
 def ready():
     return JSONResponse({"status": "ok"})
 
-@app.get("/live")    # 进程存活（轻量探活）
+@app.get("/live", summary="Lightweight live probe", responses={200: {"content": {"application/json": {}}}})
 def live():
     return JSONResponse({"status": "ok"})
 
-@app.get("/metrics")
+# 2) /metrics：显式声明 text/plain；否则 Schemathesis 会认为未记录的 content-type
+@app.get(
+    "/metrics",
+    response_class=PlainTextResponse,
+    summary="Prometheus metrics",
+    responses={200: {"content": {"text/plain": {}}}},
+)
 def metrics():
+    # CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-@app.exception_handler(405)
-async def method_not_allowed_handler(request: Request, exc: HTTPException):
-    return JSONResponse(
-        status_code=405,
-        content={"detail": f"Method {request.method} not allowed"},
-        headers={"Allow": "GET, POST, PUT, DELETE, OPTIONS"}
-    )
+# 5) CORS：不要用 allow_methods="*"，只暴露你允许的方法，避免语义混淆
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "OPTIONS"],
+    allow_headers=["*"],
+)
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# 保持原有 Gradio 挂载
 app = gr.mount_gradio_app(app, ui, path="/")
