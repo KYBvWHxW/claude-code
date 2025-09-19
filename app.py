@@ -1,7 +1,8 @@
 import gradio as gr
 import time
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from fastapi.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 from graph import build_graph
@@ -47,6 +48,14 @@ def live():
 @app.get("/metrics")
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+@app.exception_handler(405)
+async def method_not_allowed_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=405,
+        content={"detail": f"Method {request.method} not allowed"},
+        headers={"Allow": "GET, POST, PUT, DELETE, OPTIONS"}
+    )
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app = gr.mount_gradio_app(app, ui, path="/")
