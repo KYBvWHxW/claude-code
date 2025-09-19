@@ -23,7 +23,14 @@
       "Bash(git push:*)",
       "Bash(fly apps open:*)",
       "Bash(fly logs:*)",
-      "Bash(flyctl scale:*)"
+      "Bash(flyctl scale:*)",
+      "Bash(fly scale show:*)",
+      "Bash(fly releases:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(gh:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
