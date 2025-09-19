@@ -17,7 +17,13 @@
       "Bash(flyctl logs:*)",
       "Bash(curl:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(fly apps open:*)",
+      "Bash(fly logs:*)",
+      "Bash(flyctl scale:*)"
     ],
     "deny": [],
     "ask": []

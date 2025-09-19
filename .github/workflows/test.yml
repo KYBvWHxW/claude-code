@@ -1,0 +1,54 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: "0 17 * * *"   # 每天 01:00 SGT（UTC 17:00）
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run pytest
+      run: |
+        pytest -v tests/
+
+    - name: schemathesis quick (changed-surface only)
+      if: hashFiles('openapi.yaml') != ''
+      run: |
+        CHANGED=$(git diff --name-only HEAD~1 | grep -E 'openapi|routes|api' || true)
+        if [ -n "$CHANGED" ]; then
+          echo "API surface changed, running schemathesis quick..."
+          schemathesis run --max-examples 80 --validate-schema openapi.yaml
+        else
+          echo "No API surface changes; skipping schemathesis."
+        fi
+
+    - name: Run schemathesis API tests
+      run: |
+        python -m uvicorn app:app --host 0.0.0.0 --port 8080 &
+        sleep 10
+        schemathesis run openapi.yaml --base-url http://localhost:8080 --checks all
+
+    - name: Build Docker image
+      run: |
+        docker build -t langgraph-gradio-starter .
